@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,10 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useContextoRepuestos } from '../contexto/ContextoRepuestos';
 import { RootStackParamList, Repuesto } from '../tipos';
+import BarraBusqueda from '../componentes/BarraBusqueda';
 
 type PantallaListaRepuestosProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'PantallaListaRepuestos'>;
+  navigation: any;
 };
 
 export default function PantallaListaRepuestos({ navigation }: PantallaListaRepuestosProps) {
@@ -28,6 +29,8 @@ export default function PantallaListaRepuestos({ navigation }: PantallaListaRepu
     cerrarSesion,
     limpiarError,
   } = useContextoRepuestos();
+
+  const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
     // Configurar header con botón de salir
@@ -62,7 +65,7 @@ export default function PantallaListaRepuestos({ navigation }: PantallaListaRepu
           onPress: async () => {
             try {
               await cerrarSesion();
-              navigation.replace('PantallaLogin');
+              navigation.navigate('PantallaLogin');
             } catch (error) {
               Alert.alert('Error', 'No se pudo cerrar sesión');
             }
@@ -94,13 +97,21 @@ export default function PantallaListaRepuestos({ navigation }: PantallaListaRepu
     );
   };
 
+  const repuestosFiltrados = repuestos.filter(repuesto =>
+    repuesto.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
   const renderizarRepuesto = ({ item }: { item: Repuesto }) => (
     <View style={styles.tarjetaRepuesto}>
       <View style={styles.contenedorImagen}>
         {item.imagenUrl ? (
-          <Image source={{ uri: item.imagenUrl }} style={styles.imagenRepuesto} />
+          <Image 
+            source={{ uri: item.imagenUrl }} 
+            style={styles.imagenRepuesto}
+          />
         ) : (
           <View style={styles.imagenPlaceholder}>
+            <Text style={styles.textoPlaceholder}>📦</Text>
             <Text style={styles.textoPlaceholder}>Sin Imagen</Text>
           </View>
         )}
@@ -121,7 +132,13 @@ export default function PantallaListaRepuestos({ navigation }: PantallaListaRepu
         <TouchableOpacity
           style={[styles.botonAccion, styles.botonEditar]}
           onPress={() =>
-            navigation.navigate('PantallaEditarRepuesto', { repuesto: item })
+            navigation.navigate('PantallaEditarRepuesto', { 
+              repuesto: {
+                ...item,
+                fechaCreacion: item.fechaCreacion.toISOString(),
+                fechaActualizacion: item.fechaActualizacion.toISOString(),
+              }
+            })
           }
         >
           <Text style={styles.textoBotonAccion}>✏️</Text>
@@ -157,8 +174,10 @@ export default function PantallaListaRepuestos({ navigation }: PantallaListaRepu
 
   return (
     <View style={styles.container}>
+      <BarraBusqueda valor={busqueda} onCambio={setBusqueda} />
+
       <FlatList
-        data={repuestos}
+        data={repuestosFiltrados}
         keyExtractor={(item) => item.id}
         renderItem={renderizarRepuesto}
         ListEmptyComponent={renderizarListaVacia}
@@ -169,7 +188,7 @@ export default function PantallaListaRepuestos({ navigation }: PantallaListaRepu
             colors={['#007AFF']}
           />
         }
-        contentContainerStyle={repuestos.length === 0 ? styles.listaVacia : undefined}
+        contentContainerStyle={repuestosFiltrados.length === 0 ? styles.listaVacia : undefined}
         showsVerticalScrollIndicator={false}
       />
 

@@ -29,6 +29,8 @@ export default function PantallaAgregarRepuesto({ navigation }: PantallaAgregarR
     descripcion: '',
     cantidad: '',
     precio: '',
+    categoria: 'General',
+    stockMinimo: '5',
     imagenUri: undefined,
   });
 
@@ -200,6 +202,8 @@ export default function PantallaAgregarRepuesto({ navigation }: PantallaAgregarR
         descripcion: formulario.descripcion.trim(),
         cantidad: parseInt(formulario.cantidad),
         precio: parseFloat(formulario.precio),
+        categoria: formulario.categoria,
+        stockMinimo: parseInt(formulario.stockMinimo) || 5,
         imagenUrl,
       });
 
@@ -225,6 +229,8 @@ export default function PantallaAgregarRepuesto({ navigation }: PantallaAgregarR
         descripcion: formulario.descripcion.trim(),
         cantidad: parseInt(formulario.cantidad),
         precio: parseFloat(formulario.precio),
+        categoria: formulario.categoria,
+        stockMinimo: parseInt(formulario.stockMinimo) || 5,
         imagenUrl: undefined,
       });
 
@@ -319,6 +325,17 @@ export default function PantallaAgregarRepuesto({ navigation }: PantallaAgregarR
             )}
           </View>
 
+          <View style={styles.campo}>
+            <Text style={styles.etiqueta}>Categoría *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="General"
+              value={formulario.categoria}
+              onChangeText={(texto) => actualizarCampo('categoria', texto)}
+              maxLength={50}
+            />
+          </View>
+
           <View style={styles.filaDoble}>
             <View style={[styles.campo, styles.campoMitad]}>
               <Text style={styles.etiqueta}>Cantidad *</Text>
@@ -349,6 +366,18 @@ export default function PantallaAgregarRepuesto({ navigation }: PantallaAgregarR
                 <Text style={styles.textoError}>{erroresValidacion.precio}</Text>
               )}
             </View>
+          </View>
+
+          <View style={styles.campo}>
+            <Text style={styles.etiqueta}>Stock Mínimo</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="5"
+              value={formulario.stockMinimo}
+              onChangeText={(texto) => actualizarCampo('stockMinimo', texto)}
+              keyboardType="numeric"
+              maxLength={10}
+            />
           </View>
         </View>
       </ScrollView>

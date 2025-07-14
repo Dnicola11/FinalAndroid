@@ -14,11 +14,13 @@ export default function PantallaRegistro({ navigation }: PantallaRegistroProps) 
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [confirmarContrasena, setConfirmarContrasena] = useState('');
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
+  const [mostrarConfirmarContrasena, setMostrarConfirmarContrasena] = useState(false);
 
   // Redirigir si ya está autenticado
   useEffect(() => {
     if (usuario) {
-      navigation.replace('PantallaListaRepuestos');
+      navigation.replace('TabsNavegacion');
     }
   }, [usuario]);
 
@@ -29,24 +31,38 @@ export default function PantallaRegistro({ navigation }: PantallaRegistroProps) 
     }
   }, [error]);
 
+  const validarEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const manejarRegistro = async () => {
+    // Validar campos vacíos
     if (!correo.trim() || !contrasena || !confirmarContrasena) {
       Alert.alert('Error', 'Por favor complete todos los campos');
       return;
     }
 
-    if (contrasena !== confirmarContrasena) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+    // Validar formato de email
+    if (!validarEmail(correo.trim())) {
+      Alert.alert('Error', 'Por favor ingrese un correo electrónico válido');
       return;
     }
 
+    // Validar longitud mínima de contraseña
     if (contrasena.length < 6) {
       Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
+    // Validar que las contraseñas coincidan
+    if (contrasena !== confirmarContrasena) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
     try {
-      await registrarUsuario(correo, contrasena);
+      await registrarUsuario(correo.trim().toLowerCase(), contrasena);
       Alert.alert('Éxito', 'Usuario registrado correctamente');
       // La navegación se maneja automáticamente en el useEffect
     } catch (error) {
@@ -67,22 +83,38 @@ export default function PantallaRegistro({ navigation }: PantallaRegistroProps) 
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          placeholderTextColor="#666"
-          value={contrasena}
-          onChangeText={setContrasena}
-          secureTextEntry
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirmar contraseña"
-          placeholderTextColor="#666"
-          value={confirmarContrasena}
-          onChangeText={setConfirmarContrasena}
-          secureTextEntry
-        />
+        <View style={styles.contenedorContrasena}>
+          <TextInput
+            style={styles.inputContrasena}
+            placeholder="Contraseña"
+            placeholderTextColor="#666"
+            value={contrasena}
+            onChangeText={setContrasena}
+            secureTextEntry={!mostrarContrasena}
+          />
+          <TouchableOpacity
+            style={styles.botonOjito}
+            onPress={() => setMostrarContrasena(!mostrarContrasena)}
+          >
+            <Text style={styles.ojito}>👁️</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.contenedorContrasena}>
+          <TextInput
+            style={styles.inputContrasena}
+            placeholder="Confirmar contraseña"
+            placeholderTextColor="#666"
+            value={confirmarContrasena}
+            onChangeText={setConfirmarContrasena}
+            secureTextEntry={!mostrarConfirmarContrasena}
+          />
+          <TouchableOpacity
+            style={styles.botonOjito}
+            onPress={() => setMostrarConfirmarContrasena(!mostrarConfirmarContrasena)}
+          >
+            <Text style={styles.ojito}>👁️</Text>
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity 
           style={[styles.boton, cargando && styles.botonDeshabilitado]} 
           onPress={manejarRegistro}
@@ -139,6 +171,25 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     fontSize: 16,
     color: '#000',
+  },
+  contenedorContrasena: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  inputContrasena: {
+    flex: 1,
+    padding: 15,
+    fontSize: 16,
+    color: '#000',
+  },
+  botonOjito: {
+    padding: 15,
+  },
+  ojito: {
+    fontSize: 18,
   },
   boton: {
     backgroundColor: '#000',

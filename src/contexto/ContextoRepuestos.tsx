@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
+  sendPasswordResetEmail,
   User 
 } from 'firebase/auth';
 import { 
@@ -24,14 +25,16 @@ import {
   deleteObject 
 } from 'firebase/storage';
 import { auth, db, storage } from '../../firebaseConfig';
-import { EstadoContexto, AccionesContexto, Repuesto, Usuario } from '../tipos';
+import { EstadoContexto, AccionesContexto, Repuesto, Usuario, Categoria, EstadisticasInventario, FiltrosRepuestos } from '../tipos';
 
 // Estado inicial
 const estadoInicial: EstadoContexto = {
   usuario: null,
   repuestos: [],
+  categorias: [],
   cargando: false,
   cargandoRepuestos: false,
+  cargandoCategorias: false,
   error: null,
 };
 
@@ -39,11 +42,16 @@ const estadoInicial: EstadoContexto = {
 type TipoAccion = 
   | { type: 'SET_CARGANDO'; payload: boolean }
   | { type: 'SET_CARGANDO_REPUESTOS'; payload: boolean }
+  | { type: 'SET_CARGANDO_CATEGORIAS'; payload: boolean }
   | { type: 'SET_USUARIO'; payload: Usuario | null }
   | { type: 'SET_REPUESTOS'; payload: Repuesto[] }
+  | { type: 'SET_CATEGORIAS'; payload: Categoria[] }
   | { type: 'AGREGAR_REPUESTO'; payload: Repuesto }
+  | { type: 'AGREGAR_CATEGORIA'; payload: Categoria }
   | { type: 'ACTUALIZAR_REPUESTO'; payload: { id: string; repuesto: Partial<Repuesto> } }
+  | { type: 'ACTUALIZAR_CATEGORIA'; payload: { id: string; categoria: Partial<Categoria> } }
   | { type: 'ELIMINAR_REPUESTO'; payload: string }
+  | { type: 'ELIMINAR_CATEGORIA'; payload: string }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'LIMPIAR_ERROR' };
 
@@ -54,12 +62,18 @@ const reducer = (estado: EstadoContexto, accion: TipoAccion): EstadoContexto => 
       return { ...estado, cargando: accion.payload };
     case 'SET_CARGANDO_REPUESTOS':
       return { ...estado, cargandoRepuestos: accion.payload };
+    case 'SET_CARGANDO_CATEGORIAS':
+      return { ...estado, cargandoCategorias: accion.payload };
     case 'SET_USUARIO':
       return { ...estado, usuario: accion.payload };
     case 'SET_REPUESTOS':
       return { ...estado, repuestos: accion.payload };
+    case 'SET_CATEGORIAS':
+      return { ...estado, categorias: accion.payload };
     case 'AGREGAR_REPUESTO':
       return { ...estado, repuestos: [...estado.repuestos, accion.payload] };
+    case 'AGREGAR_CATEGORIA':
+      return { ...estado, categorias: [...estado.categorias, accion.payload] };
     case 'ACTUALIZAR_REPUESTO':
       return {
         ...estado,
@@ -69,10 +83,24 @@ const reducer = (estado: EstadoContexto, accion: TipoAccion): EstadoContexto => 
             : repuesto
         ),
       };
+    case 'ACTUALIZAR_CATEGORIA':
+      return {
+        ...estado,
+        categorias: estado.categorias.map(categoria =>
+          categoria.id === accion.payload.id
+            ? { ...categoria, ...accion.payload.categoria }
+            : categoria
+        ),
+      };
     case 'ELIMINAR_REPUESTO':
       return {
         ...estado,
         repuestos: estado.repuestos.filter(repuesto => repuesto.id !== accion.payload),
+      };
+    case 'ELIMINAR_CATEGORIA':
+      return {
+        ...estado,
+        categorias: estado.categorias.filter(categoria => categoria.id !== accion.payload),
       };
     case 'SET_ERROR':
       return { ...estado, error: accion.payload };
@@ -184,6 +212,35 @@ export const ProveedorContextoRepuestos: React.FC<ProveedorContextoRepuestosProp
     }
   };
 
+  const recuperarContrasena = async (email: string): Promise<void> => {
+    try {
+      dispatch({ type: 'SET_CARGANDO', payload: true });
+      dispatch({ type: 'LIMPIAR_ERROR' });
+      await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      let mensajeError = 'Error al enviar correo de recuperación';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          mensajeError = 'No existe una cuenta con este correo electrónico';
+          break;
+        case 'auth/invalid-email':
+          mensajeError = 'El formato del correo electrónico no es válido';
+          break;
+        case 'auth/too-many-requests':
+          mensajeError = 'Demasiados intentos. Intente más tarde';
+          break;
+        default:
+          mensajeError = error.message;
+      }
+      
+      dispatch({ type: 'SET_ERROR', payload: mensajeError });
+      throw new Error(mensajeError);
+    } finally {
+      dispatch({ type: 'SET_CARGANDO', payload: false });
+    }
+  };
+
   // Funciones de repuestos
   const obtenerRepuestos = async (): Promise<void> => {
     try {
@@ -202,6 +259,8 @@ export const ProveedorContextoRepuestos: React.FC<ProveedorContextoRepuestosProp
           descripcion: data.descripcion,
           cantidad: data.cantidad,
           precio: data.precio,
+          categoria: data.categoria || 'General',
+          stockMinimo: data.stockMinimo || 5,
           imagenUrl: data.imagenUrl,
           fechaCreacion: data.fechaCreacion?.toDate() || new Date(),
           fechaActualizacion: data.fechaActualizacion?.toDate() || new Date(),
@@ -239,6 +298,8 @@ export const ProveedorContextoRepuestos: React.FC<ProveedorContextoRepuestosProp
         descripcion: repuesto.descripcion,
         cantidad: repuesto.cantidad,
         precio: repuesto.precio,
+        categoria: repuesto.categoria,
+        stockMinimo: repuesto.stockMinimo,
         imagenUrl: repuesto.imagenUrl || null,
         fechaCreacion: Timestamp.fromDate(ahora),
         fechaActualizacion: Timestamp.fromDate(ahora),
@@ -261,6 +322,8 @@ export const ProveedorContextoRepuestos: React.FC<ProveedorContextoRepuestosProp
         descripcion: repuesto.descripcion,
         cantidad: repuesto.cantidad,
         precio: repuesto.precio,
+        categoria: repuesto.categoria,
+        stockMinimo: repuesto.stockMinimo,
         imagenUrl: repuesto.imagenUrl,
         fechaCreacion: ahora,
         fechaActualizacion: ahora,
@@ -468,6 +531,146 @@ export const ProveedorContextoRepuestos: React.FC<ProveedorContextoRepuestosProp
     }
   };
 
+  // Funciones de categorías
+  const obtenerCategorias = async (): Promise<void> => {
+    try {
+      dispatch({ type: 'SET_CARGANDO_CATEGORIAS', payload: true });
+      dispatch({ type: 'LIMPIAR_ERROR' });
+      
+      const q = query(collection(db, 'categorias'), orderBy('fechaCreacion', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      const categorias: Categoria[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        categorias.push({
+          id: doc.id,
+          nombre: data.nombre,
+          descripcion: data.descripcion,
+          color: data.color,
+          fechaCreacion: data.fechaCreacion?.toDate() || new Date(),
+        });
+      });
+      
+      dispatch({ type: 'SET_CATEGORIAS', payload: categorias });
+    } catch (error: any) {
+      dispatch({ type: 'SET_ERROR', payload: 'Error al obtener categorías' });
+      throw new Error('Error al obtener categorías');
+    } finally {
+      dispatch({ type: 'SET_CARGANDO_CATEGORIAS', payload: false });
+    }
+  };
+
+  const agregarCategoria = async (categoria: Omit<Categoria, 'id' | 'fechaCreacion'>): Promise<void> => {
+    try {
+      dispatch({ type: 'SET_CARGANDO', payload: true });
+      dispatch({ type: 'LIMPIAR_ERROR' });
+      
+      const ahora = new Date();
+      const nuevaCategoria = {
+        ...categoria,
+        fechaCreacion: Timestamp.fromDate(ahora),
+      };
+      
+      const docRef = await addDoc(collection(db, 'categorias'), nuevaCategoria);
+      
+      const categoriaCompleta: Categoria = {
+        id: docRef.id,
+        ...categoria,
+        fechaCreacion: ahora,
+      };
+      
+      dispatch({ type: 'AGREGAR_CATEGORIA', payload: categoriaCompleta });
+    } catch (error: any) {
+      dispatch({ type: 'SET_ERROR', payload: 'Error al agregar categoría' });
+      throw new Error('Error al agregar categoría');
+    } finally {
+      dispatch({ type: 'SET_CARGANDO', payload: false });
+    }
+  };
+
+  const actualizarCategoria = async (id: string, categoria: Partial<Categoria>): Promise<void> => {
+    try {
+      dispatch({ type: 'SET_CARGANDO', payload: true });
+      dispatch({ type: 'LIMPIAR_ERROR' });
+      
+      await updateDoc(doc(db, 'categorias', id), categoria);
+      dispatch({ type: 'ACTUALIZAR_CATEGORIA', payload: { id, categoria } });
+    } catch (error: any) {
+      dispatch({ type: 'SET_ERROR', payload: 'Error al actualizar categoría' });
+      throw new Error('Error al actualizar categoría');
+    } finally {
+      dispatch({ type: 'SET_CARGANDO', payload: false });
+    }
+  };
+
+  const eliminarCategoria = async (id: string): Promise<void> => {
+    try {
+      dispatch({ type: 'SET_CARGANDO', payload: true });
+      dispatch({ type: 'LIMPIAR_ERROR' });
+      
+      await deleteDoc(doc(db, 'categorias', id));
+      dispatch({ type: 'ELIMINAR_CATEGORIA', payload: id });
+    } catch (error: any) {
+      dispatch({ type: 'SET_ERROR', payload: 'Error al eliminar categoría' });
+      throw new Error('Error al eliminar categoría');
+    } finally {
+      dispatch({ type: 'SET_CARGANDO', payload: false });
+    }
+  };
+
+  // Funciones de filtrado y estadísticas
+  const filtrarRepuestos = (filtros: FiltrosRepuestos): Repuesto[] => {
+    return estado.repuestos.filter(repuesto => {
+      const cumpleBusqueda = !filtros.busqueda || 
+        repuesto.nombre.toLowerCase().includes(filtros.busqueda.toLowerCase()) ||
+        repuesto.descripcion.toLowerCase().includes(filtros.busqueda.toLowerCase());
+      
+      const cumpleCategoria = !filtros.categoria || filtros.categoria === 'Todas' || 
+        repuesto.categoria === filtros.categoria;
+      
+      const cumplePrecio = repuesto.precio >= filtros.precioMinimo && 
+        repuesto.precio <= filtros.precioMaximo;
+      
+      const cumpleCantidad = repuesto.cantidad >= filtros.cantidadMinima;
+      
+      const cumpleStockBajo = !filtros.soloStockBajo || 
+        repuesto.cantidad <= repuesto.stockMinimo;
+      
+      return cumpleBusqueda && cumpleCategoria && cumplePrecio && cumpleCantidad && cumpleStockBajo;
+    });
+  };
+
+  const obtenerEstadisticas = (): EstadisticasInventario => {
+    const totalRepuestos = estado.repuestos.reduce((total, repuesto) => total + repuesto.cantidad, 0);
+    const valorTotalInventario = estado.repuestos.reduce((total, repuesto) => total + (repuesto.precio * repuesto.cantidad), 0);
+    const repuestosStockBajo = estado.repuestos.filter(repuesto => repuesto.cantidad <= repuesto.stockMinimo).length;
+    
+    // Encontrar categoría con más repuestos
+    const categoriaCount: { [key: string]: number } = {};
+    estado.repuestos.forEach(repuesto => {
+      categoriaCount[repuesto.categoria] = (categoriaCount[repuesto.categoria] || 0) + 1;
+    });
+    
+    const categoriaConMasRepuestos = Object.keys(categoriaCount).reduce((a, b) => 
+      categoriaCount[a] > categoriaCount[b] ? a : b, 'General');
+    
+    const promedioPrecios = estado.repuestos.length > 0 ? 
+      estado.repuestos.reduce((total, repuesto) => total + repuesto.precio, 0) / estado.repuestos.length : 0;
+    
+    return {
+      totalRepuestos,
+      valorTotalInventario,
+      repuestosStockBajo,
+      categoriaConMasRepuestos,
+      promedioPrecios,
+    };
+  };
+
+  const obtenerRepuestosStockBajo = (): Repuesto[] => {
+    return estado.repuestos.filter(repuesto => repuesto.cantidad <= repuesto.stockMinimo);
+  };
+
   const limpiarError = (): void => {
     dispatch({ type: 'LIMPIAR_ERROR' });
   };
@@ -477,10 +680,18 @@ export const ProveedorContextoRepuestos: React.FC<ProveedorContextoRepuestosProp
     iniciarSesion,
     registrarUsuario,
     cerrarSesion,
+    recuperarContrasena,
     obtenerRepuestos,
     agregarRepuesto,
     actualizarRepuesto,
     eliminarRepuesto,
+    filtrarRepuestos,
+    obtenerCategorias,
+    agregarCategoria,
+    actualizarCategoria,
+    eliminarCategoria,
+    obtenerEstadisticas,
+    obtenerRepuestosStockBajo,
     subirImagen,
     eliminarImagen,
     limpiarError,

@@ -24,7 +24,19 @@ type PantallaEditarRepuestoProps = {
 };
 
 export default function PantallaEditarRepuesto({ navigation, route }: PantallaEditarRepuestoProps) {
-  const { repuesto } = route.params;
+  const { repuesto: repuestoParam } = route.params;
+  
+  // Convertir fechas de string a Date si es necesario
+  const repuesto = {
+    ...repuestoParam,
+    fechaCreacion: typeof repuestoParam.fechaCreacion === 'string' 
+      ? new Date(repuestoParam.fechaCreacion) 
+      : repuestoParam.fechaCreacion,
+    fechaActualizacion: typeof repuestoParam.fechaActualizacion === 'string' 
+      ? new Date(repuestoParam.fechaActualizacion) 
+      : repuestoParam.fechaActualizacion,
+  };
+
   const { actualizarRepuesto, subirImagen, eliminarImagen, cargando, error, limpiarError } = useContextoRepuestos();
 
   const [formulario, setFormulario] = useState<FormularioRepuesto>({
@@ -32,6 +44,8 @@ export default function PantallaEditarRepuesto({ navigation, route }: PantallaEd
     descripcion: repuesto.descripcion,
     cantidad: repuesto.cantidad.toString(),
     precio: repuesto.precio.toString(),
+    categoria: repuesto.categoria || 'General',
+    stockMinimo: repuesto.stockMinimo?.toString() || '5',
     imagenUri: repuesto.imagenUrl,
   });
 
@@ -236,6 +250,8 @@ export default function PantallaEditarRepuesto({ navigation, route }: PantallaEd
         descripcion: formulario.descripcion.trim(),
         cantidad: parseInt(formulario.cantidad),
         precio: parseFloat(formulario.precio),
+        categoria: formulario.categoria,
+        stockMinimo: parseInt(formulario.stockMinimo) || 5,
         imagenUrl,
       });
 
@@ -264,6 +280,8 @@ export default function PantallaEditarRepuesto({ navigation, route }: PantallaEd
         descripcion: formulario.descripcion.trim(),
         cantidad: parseInt(formulario.cantidad),
         precio: parseFloat(formulario.precio),
+        categoria: formulario.categoria,
+        stockMinimo: parseInt(formulario.stockMinimo) || 5,
         imagenUrl: repuesto.imagenUrl, // Mantener imagen original
       });
 
@@ -386,6 +404,17 @@ export default function PantallaEditarRepuesto({ navigation, route }: PantallaEd
             )}
           </View>
 
+          <View style={styles.campo}>
+            <Text style={styles.etiqueta}>Categoría *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="General"
+              value={formulario.categoria}
+              onChangeText={(texto) => actualizarCampo('categoria', texto)}
+              maxLength={50}
+            />
+          </View>
+
           <View style={styles.filaDoble}>
             <View style={[styles.campo, styles.campoMitad]}>
               <Text style={styles.etiqueta}>Cantidad *</Text>
@@ -416,6 +445,18 @@ export default function PantallaEditarRepuesto({ navigation, route }: PantallaEd
                 <Text style={styles.textoError}>{erroresValidacion.precio}</Text>
               )}
             </View>
+          </View>
+
+          <View style={styles.campo}>
+            <Text style={styles.etiqueta}>Stock Mínimo</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="5"
+              value={formulario.stockMinimo}
+              onChangeText={(texto) => actualizarCampo('stockMinimo', texto)}
+              keyboardType="numeric"
+              maxLength={10}
+            />
           </View>
         </View>
       </ScrollView>
