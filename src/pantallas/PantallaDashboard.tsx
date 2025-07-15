@@ -102,22 +102,6 @@ export default function PantallaDashboard() {
           </View>
         )}
       </View>
-
-      {/* Información adicional */}
-      <View style={styles.seccionInfo}>
-        <Text style={styles.tituloSeccion}>ℹ️ Información del Sistema</Text>
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoTexto}>
-            • Dashboard actualizado en tiempo real
-          </Text>
-          <Text style={styles.infoTexto}>
-            • Alertas automáticas de stock bajo
-          </Text>
-          <Text style={styles.infoTexto}>
-            • Gestión completa de inventario
-          </Text>
-        </View>
-      </View>
     </ScrollView>
   );
 }
