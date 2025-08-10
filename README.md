@@ -10,7 +10,6 @@
 ### Frontend (React Native)
 1. Instalar dependencias:
    ```
-   cd gestion-repuestos/frontend
    npm install
    ```
 2. Configurar Firebase en `firebaseConfig.ts`
@@ -22,7 +21,6 @@
 ### Backend (Node.js)
 1. Instalar dependencias:
    ```
-   cd gestion-repuestos/backend
    npm install
    ```
 2. Ejecutar el servidor:
