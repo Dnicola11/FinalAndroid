@@ -6,8 +6,6 @@
 - Backend básico de Node.js para gestión de repuestos
 
 ## Configuración
-
-### Frontend (React Native)
 1. Instalar dependencias:
    ```
    npm install
@@ -17,16 +15,5 @@
    ```
    npm start
    ```
-
-### Backend (Node.js)
-1. Instalar dependencias:
-   ```
-   npm install
-   ```
-2. Ejecutar el servidor:
-   ```
-   npm run dev
-   ```
-
 ## Nota
 - Se requiere configuración del proyecto Firebase con autenticación y Firestore habilitados.
