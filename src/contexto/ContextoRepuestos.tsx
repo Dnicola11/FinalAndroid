@@ -225,7 +225,7 @@ export const ProveedorContextoRepuestos: React.FC<ProveedorContextoRepuestosProp
           mensajeError = 'No existe una cuenta con este correo electrónico';
           break;
         case 'auth/invalid-email':
-          mensajeError = 'El formato del correo electrónico no es válido';
+          mensajeError = 'El formato del correo electrónico no es válido, Ingresar otro';
           break;
         case 'auth/too-many-requests':
           mensajeError = 'Demasiados intentos. Intente más tarde';
